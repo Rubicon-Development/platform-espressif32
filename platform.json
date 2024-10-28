@@ -50,9 +50,8 @@
     "toolchain-riscv32-esp": {
       "type": "toolchain",
       "optional": true,
-      "owner": "espressif",
-      "version": "8.4.0+2021r2-patch5",
-      "optionalVersions": ["13.2.0+20240530"]
+      "owner": "platformio",
+      "version": "13.2.0+20240530"
     },
     "toolchain-xtensa-esp-elf": {
       "type": "toolchain",
@@ -64,21 +63,21 @@
       "type": "toolchain",
       "optional": true,
       "owner": "platformio",
-      "version": "~1.23500.0"
+      "version": "~1.23800.0"
     },
       "tool-xtensa-esp-elf-gdb": {
       "type": "debugger",
       "optional": true,
-      "owner": "espressif",
-      "version": "~12.1.0"
+      "owner": "platformio",
+      "version": "14.2.0+20240403"
     },
     "tool-riscv32-esp-elf-gdb": {
       "type": "debugger",
       "optional": true,
-      "owner": "espressif",
-      "version": "~12.1.0"
+      "owner": "platformio",
+      "version": "14.2.0+20240403"
     },
-    "framework-arduinoespressif32": {
+        "framework-arduinoespressif32": {
       "type": "framework",
       "optional": true,
       "owner": "espressif",
@@ -140,16 +139,6 @@
       "optional": true,
       "owner": "platformio",
       "version": "^1.7.0"
-    },
-    "tool-mconf": {
-      "optional": true,
-      "owner": "platformio",
-      "version": "~1.4060000.0"
-    },
-    "tool-idf": {
-      "optional": true,
-      "owner": "platformio",
-      "version": "~1.0.1"
     }
   }
 }
