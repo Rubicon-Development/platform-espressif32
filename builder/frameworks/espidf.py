@@ -53,12 +53,14 @@ if os.environ.get("PYTHONPATH"):
 env = DefaultEnvironment()
 env.SConscript("_embed_files.py", exports="env")
 
+# Allow changes in folders of managed components
+os.environ["IDF_COMPONENT_OVERWRITE_MANAGED_COMPONENTS"] = "1"
+
 platform = env.PioPlatform()
 board = env.BoardConfig()
 mcu = board.get("build.mcu", "esp32")
 idf_variant = mcu.lower()
 
-# Required until Arduino switches to v5
 IDF5 = (
     platform.get_package_version("framework-espidf")
     .split(".")[1]
@@ -67,15 +69,7 @@ IDF5 = (
 IDF_ENV_VERSION = "1.0.0"
 FRAMEWORK_DIR = platform.get_package_dir("framework-espidf")
 TOOLCHAIN_DIR = platform.get_package_dir(
-    "toolchain-riscv32-esp"
-    if mcu in ("esp32c3", "esp32c6")
-    else (
-        (
-            "toolchain-xtensa-esp-elf"
-            if "arduino" not in env.subst("$PIOFRAMEWORK")
-            else "toolchain-xtensa-%s" % mcu
-        )
-    )
+    "toolchain-%s" % ("riscv32-esp" if mcu in ("esp32c2", "esp32c3", "esp32c6", "esp32h2") else ("xtensa-%s" % mcu))
 )
 
 
@@ -91,7 +85,7 @@ if (
 ):
     print("Warning! Debugging an IDF project requires PlatformIO Core >= 6.1.11!")
 
-# Arduino framework as a component is not compatible with ESP-IDF >=4.1
+# Arduino framework as a component is not compatible with ESP-IDF >5.2
 if "arduino" in env.subst("$PIOFRAMEWORK"):
     ARDUINO_FRAMEWORK_DIR = platform.get_package_dir("framework-arduinoespressif32")
     # Possible package names in 'package@version' format is not compatible with CMake
@@ -256,13 +250,11 @@ def populate_idf_env_vars(idf_env):
         os.path.dirname(get_python_exe()),
     ]
 
-    if mcu not in ("esp32c3", "esp32c6"):
-        additional_packages.append(
-            os.path.join(platform.get_package_dir("toolchain-esp32ulp"), "bin"),
-        )
+#    if mcu in ("esp32", "esp32s2", "esp32s3"):
+#        additional_packages.append(
+#            os.path.join(platform.get_package_dir("toolchain-esp32ulp"), "bin"),
+#        )
 
-    if IS_WINDOWS:
-        additional_packages.append(platform.get_package_dir("tool-mconf"))
 
     idf_env["PATH"] = os.pathsep.join(additional_packages + [idf_env["PATH"]])
 
@@ -515,7 +507,7 @@ def extract_linker_script_fragments_backup(framework_components_dir, sdk_config)
         sys.stderr.write("Error: Failed to extract paths to linker script fragments\n")
         env.Exit(1)
 
-    if mcu in ("esp32c3", "esp32c6"):
+    if mcu in ("esp32c2", "esp32c3", "esp32c6", "esp32h2", "esp32p4"):
         result.append(os.path.join(framework_components_dir, "riscv", "linker.lf"))
 
     # Add extra linker fragments
@@ -1261,6 +1253,7 @@ def install_python_deps():
         return
 
     deps = {
+        "wheel": ">=0.35.1",
         # https://github.com/platformio/platformio-core/issues/4614
         "urllib3": "<2",
         # https://github.com/platformio/platform-espressif32/issues/635
@@ -1268,7 +1261,7 @@ def install_python_deps():
         "future": ">=0.18.3",
         "pyparsing": ">=3.1.0,<4" if IDF5 else ">=2.0.3,<2.4.0",
         "kconfiglib": "~=14.1.0" if IDF5 else "~=13.7.1",
-        "idf-component-manager": "~=1.5.2" if IDF5 else "~=1.0",
+        "idf-component-manager": "~=2.0.1" if IDF5 else "~=1.0",
         "esp-idf-kconfig": ">=1.4.2,<2.0.0"
     }
 
@@ -1304,17 +1297,6 @@ def install_python_deps():
                 "Installing windows-curses package",
             )
         )
-
-        # A special "esp-windows-curses" python package is required on Windows
-        # for Menuconfig on IDF <5
-        if not IDF5 and "esp-windows-curses" not in installed_packages:
-            env.Execute(
-                env.VerboseAction(
-                    '"%s" -m pip install "file://%s/tools/kconfig_new/esp-windows-curses"'
-                    % (python_exe_path, FRAMEWORK_DIR),
-                    "Installing windows-curses package",
-                )
-            )
 
 
 def get_idf_venv_dir():
@@ -1680,7 +1662,7 @@ env.Prepend(
         (
             board.get(
                 "upload.bootloader_offset",
-                "0x0" if mcu in ("esp32c3", "esp32c6", "esp32s3") else "0x1000",
+                "0x1000" if mcu in ["esp32", "esp32s2"] else ("0x2000" if mcu in ["esp32p4"] else "0x0"),
             ),
             os.path.join("$BUILD_DIR", "bootloader.bin"),
         ),
@@ -1791,8 +1773,8 @@ env["BUILDERS"]["ElfToBin"].action = action
 #
 
 ulp_dir = os.path.join(PROJECT_DIR, "ulp")
-if os.path.isdir(ulp_dir) and os.listdir(ulp_dir) and mcu not in ("esp32c3", "esp32c6"):
-    env.SConscript("ulp.py", exports="env sdk_config project_config idf_variant")
+if os.path.isdir(ulp_dir) and os.listdir(ulp_dir) and mcu not in ("esp32c2", "esp32c3", "esp32h2"):
+    env.SConscript("ulp.py", exports="env sdk_config project_config app_includes idf_variant")
 
 #
 # Process OTA partition and image
